@@ -8,10 +8,13 @@ from app.core.database import get_db
 from app.core.deps import require_role
 from app.models.user import User
 from app.schemas.admin import AdminDashboardResponse
+from app.schemas.hr import HRDashboardResponse
 from app.services.dashboard_service import get_admin_dashboard
+from app.services.reporting_service import get_hr_dashboard
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 Admin = Annotated[User, Depends(require_role("admin"))]
+AdminOrHR = Annotated[User, Depends(require_role("admin", "hr"))]
 Database = Annotated[Session, Depends(get_db)]
 FromDate = Annotated[date | None, Query(alias="from")]
 ToDate = Annotated[date | None, Query(alias="to")]
@@ -27,6 +30,23 @@ def read_admin_dashboard(
 ) -> dict:
     return get_admin_dashboard(
         session,
+        from_date=from_date,
+        to_date=to_date,
+        department_id=department_id,
+    )
+
+
+@router.get("/hr", response_model=HRDashboardResponse)
+def read_hr_dashboard(
+    user: AdminOrHR,
+    session: Database,
+    from_date: FromDate = None,
+    to_date: ToDate = None,
+    department_id: int | None = Query(default=None, ge=1),
+) -> dict:
+    return get_hr_dashboard(
+        session,
+        user=user,
         from_date=from_date,
         to_date=to_date,
         department_id=department_id,
