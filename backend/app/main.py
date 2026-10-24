@@ -14,7 +14,18 @@ from app.core.config import get_settings
 from app.core.database import SessionLocal
 from app.core.exceptions import ApiError
 from app.core.rate_limit import limiter
-from app.routers import audit, auth, dashboard, organization, setup, users
+from app.routers import (
+    attendance,
+    audit,
+    auth,
+    dashboard,
+    employees,
+    leaves,
+    organization,
+    payroll,
+    setup,
+    users,
+)
 from app.services.setup_service import bootstrap_admin_from_environment
 
 logger = logging.getLogger(__name__)
@@ -105,6 +116,10 @@ app.include_router(organization.router)
 app.include_router(users.router)
 app.include_router(audit.router)
 app.include_router(dashboard.router)
+app.include_router(employees.router)
+app.include_router(attendance.router)
+app.include_router(leaves.router)
+app.include_router(payroll.router)
 
 
 @app.get("/api/health", tags=["health"])

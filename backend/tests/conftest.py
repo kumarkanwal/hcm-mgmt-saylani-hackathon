@@ -95,3 +95,112 @@ if not any(getattr(route, "path", None) == "/api/_test/admin" for route in app.r
 @pytest.fixture
 def db_factory(test_engine):
     return sessionmaker(bind=test_engine, autoflush=False, expire_on_commit=False)
+
+
+@pytest.fixture
+def phase2_context(client):
+    setup = client.post(
+        "/api/setup",
+        json={
+            "company_name": "Phase 2 Test Company",
+            "admin_email": "phase2-admin@example.com",
+            "admin_password": "Phase2-Admin-Pass-2026",
+        },
+    )
+    assert setup.status_code == 201
+    admin_login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "phase2-admin@example.com",
+            "password": "Phase2-Admin-Pass-2026",
+        },
+    )
+    admin_headers = {"Authorization": f"Bearer {admin_login.json()['access_token']}"}
+    department = client.post(
+        "/api/departments", headers=admin_headers, json={"name": "Engineering"}
+    ).json()
+    designation = client.post(
+        "/api/designations",
+        headers=admin_headers,
+        json={"name": "Software Engineer", "department_id": department["id"]},
+    ).json()
+    hr = client.post(
+        "/api/users", headers=admin_headers, json={"email": "phase2-hr@example.com"}
+    ).json()
+    hr_login = client.post(
+        "/api/auth/login",
+        json={"email": "phase2-hr@example.com", "password": hr["temp_password"]},
+    )
+    hr_headers = {"Authorization": f"Bearer {hr_login.json()['access_token']}"}
+    changed = client.post(
+        "/api/auth/change-password",
+        headers=hr_headers,
+        json={
+            "old_password": hr["temp_password"],
+            "new_password": "Phase2-HR-Permanent-2026",
+        },
+    )
+    assert changed.status_code == 200
+    hr_login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "phase2-hr@example.com",
+            "password": "Phase2-HR-Permanent-2026",
+        },
+    )
+    return {
+        "admin_headers": admin_headers,
+        "hr_headers": {"Authorization": f"Bearer {hr_login.json()['access_token']}"},
+        "department_id": department["id"],
+        "designation_id": designation["id"],
+    }
+
+
+@pytest.fixture
+def phase2_employee(client, phase2_context):
+    created = client.post(
+        "/api/employees",
+        headers=phase2_context["hr_headers"],
+        json={
+            "employee_code": "EMP-001",
+            "first_name": "Test",
+            "last_name": "Employee",
+            "email": "employee1@example.com",
+            "phone": "03000000000",
+            "gender": "other",
+            "department_id": phase2_context["department_id"],
+            "designation_id": phase2_context["designation_id"],
+            "join_date": "2026-01-01",
+            "basic_salary": 100000,
+        },
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "employee1@example.com", "password": body["temp_password"]},
+    )
+    temporary_headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+    assert (
+        client.post(
+            "/api/auth/change-password",
+            headers=temporary_headers,
+            json={
+                "old_password": body["temp_password"],
+                "new_password": "Employee-Permanent-2026",
+            },
+        ).status_code
+        == 200
+    )
+    login = client.post(
+        "/api/auth/login",
+        json={
+            "email": "employee1@example.com",
+            "password": "Employee-Permanent-2026",
+        },
+    )
+    return {
+        **phase2_context,
+        "employee": body["employee"],
+        "employee_headers": {"Authorization": f"Bearer {login.json()['access_token']}"},
+    }
