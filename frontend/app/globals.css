@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+:root {
+  --primary: #0f9488;
+  --primary-dark: #087d74;
+  --ink: #11182d;
+  --muted: #718096;
+  --line: #e2e8f0;
+  --page: #f5f8fa;
+  --card: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html { min-width: 375px; background: var(--page); }
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--page);
+  font-family: var(--font-inter), Inter, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button, input, select, textarea { font: inherit; }
+button, a { -webkit-tap-highlight-color: transparent; }
+
+@theme inline {
+  --color-primary: var(--primary);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-page: var(--page);
+  --font-sans: var(--font-inter);
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.02);
+}
+
+.auth-background {
+  background:
+    radial-gradient(circle at 102% -4%, rgb(15 148 136 / 0.09) 0 19%, transparent 19.2%),
+    radial-gradient(circle at -7% 108%, rgb(15 148 136 / 0.08) 0 22%, transparent 22.2%),
+    #f8fbfc;
+}
+
+.scrollbar-thin { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+
+@media (max-width: 767px) {
+  .desktop-only { display: none !important; }
+}
