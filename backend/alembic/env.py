@@ -1,18 +1,25 @@
+import os
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import app.models  # noqa: F401  Register the complete metadata before migration autogeneration.
+from alembic import context
 from app.core.config import get_settings
-from app.core.database import Base
+from app.models.base import Base
 
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# No domain models exist in Phase 0. Phase 1 imports each model module here.
+# Importing app.models above registers every contract model for autogeneration.
 target_metadata = Base.metadata
-database_url = get_settings().database_url
+settings = get_settings()
+database_url = (
+    os.environ.get("ALEMBIC_DATABASE_URL")
+    or settings.migration_database_url
+    or settings.database_url
+)
 
 
 def run_migrations_offline() -> None:

@@ -1,1 +1,1 @@
-"""Business services will be added with their implementation phases."""
+"""Business services and transaction-aware persistence operations."""
