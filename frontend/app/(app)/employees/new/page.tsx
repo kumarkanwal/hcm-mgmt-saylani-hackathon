@@ -6,7 +6,7 @@ import { Check, Copy, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 import { FormField } from "@/components/form-field";
@@ -25,7 +25,7 @@ const schema = z.object({
   first_name: z.string().min(1, "Enter a first name."), last_name: z.string().min(1, "Enter a last name."),
   email: z.email("Enter a valid email address."), phone: z.string().min(7, "Enter a phone number."), gender: z.string().min(1, "Select a gender."),
   employee_code: z.string().min(1, "Enter an employee code."), department_id: z.string().min(1, "Select a department."), designation_id: z.string().min(1, "Select a designation."),
-  join_date: z.string().min(1, "Select a join date."), basic_salary: z.coerce.number().positive("Enter a salary greater than zero."),
+  join_date: z.string().min(1, "Select a join date."), basic_salary: z.number().positive("Enter a salary greater than zero."),
 });
 type FormValues = z.infer<typeof schema>;
 type CreateResponse = { employee: Employee; temp_password: string };
@@ -39,8 +39,8 @@ export default function RegisterEmployeePage() {
   const departments = useQuery({ queryKey: ["departments"], queryFn: () => api.get<ListResponse<Department>>("/departments") });
   const designations = useQuery({ queryKey: ["designations"], queryFn: () => api.get<ListResponse<Designation>>("/designations") });
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { first_name: "", last_name: "", email: "", phone: "", gender: "", employee_code: "", department_id: "", designation_id: "", join_date: "", basic_salary: 0 } });
-  const selectedDepartment = form.watch("department_id");
-  const basicSalary = Number(form.watch("basic_salary")) || 0;
+  const selectedDepartment = useWatch({ control: form.control, name: "department_id" });
+  const basicSalary = Number(useWatch({ control: form.control, name: "basic_salary" })) || 0;
   const filteredDesignations = useMemo(() => designations.data?.items.filter((item) => !selectedDepartment || item.department_id === selectedDepartment) ?? [], [designations.data, selectedDepartment]);
   const createEmployee = useMutation({ mutationFn: (values: FormValues) => api.post<CreateResponse>("/employees", values), onSuccess: (response) => { setResult(response); toast.success("Employee registered"); } });
   if (role !== "hr") return null;
@@ -63,7 +63,7 @@ export default function RegisterEmployeePage() {
             <FormField label="Employee code" htmlFor="employee_code" required error={form.formState.errors.employee_code?.message}><Input id="employee_code" {...form.register("employee_code")} /></FormField>
             <div className="grid gap-4 sm:grid-cols-2"><FormField label="Department" htmlFor="department_id" required error={form.formState.errors.department_id?.message}><Select id="department_id" {...form.register("department_id")}><option value="">Select department</option>{departments.data?.items.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></FormField><FormField label="Designation" htmlFor="designation_id" required error={form.formState.errors.designation_id?.message}><Select id="designation_id" {...form.register("designation_id")}><option value="">Select designation</option>{filteredDesignations.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</Select></FormField></div>
             <FormField label="Join date" htmlFor="join_date" required error={form.formState.errors.join_date?.message}><Input id="join_date" type="date" {...form.register("join_date")} /></FormField>
-            <FormField label="Basic salary (PKR)" htmlFor="basic_salary" required error={form.formState.errors.basic_salary?.message}><Input id="basic_salary" type="number" min="0" step="1000" {...form.register("basic_salary")} /></FormField>
+            <FormField label="Basic salary (PKR)" htmlFor="basic_salary" required error={form.formState.errors.basic_salary?.message}><Input id="basic_salary" type="number" min="0" step="1000" {...form.register("basic_salary", { valueAsNumber: true })} /></FormField>
             <div className="rounded-lg bg-teal-50 p-5 text-sm"><h3 className="font-semibold">Salary preview (PKR)</h3><dl className="mt-4 space-y-3 text-slate-600"><div className="flex justify-between"><dt>Basic salary</dt><dd className="font-semibold text-ink">{basicSalary.toLocaleString()}</dd></div><div className="flex justify-between"><dt>House Rent Allowance (40%)</dt><dd className="font-semibold text-ink">{(basicSalary * 0.4).toLocaleString()}</dd></div><div className="flex justify-between"><dt>Medical Allowance (10%)</dt><dd className="font-semibold text-ink">{(basicSalary * 0.1).toLocaleString()}</dd></div><div className="flex justify-between border-t border-teal-100 pt-3"><dt className="font-semibold text-ink">Gross salary</dt><dd className="font-bold text-ink">{(basicSalary * 1.5).toLocaleString()}</dd></div></dl></div>
           </section>
         </div>

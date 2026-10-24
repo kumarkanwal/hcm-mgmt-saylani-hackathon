@@ -56,7 +56,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       ...(isFormData ? {} : options.body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: options.body ? (isFormData ? options.body : JSON.stringify(options.body)) : undefined,
+    body: options.body ? (isFormData ? options.body as FormData : JSON.stringify(options.body)) : undefined,
   });
 
   if (!response.ok) {
@@ -67,7 +67,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
       setToken(null);
       window.dispatchEvent(new Event("hcm-auth-cleared"));
     }
-    if (response.status === 403 && code === "PASSWORD_CHANGE_REQUIRED") window.location.assign("/change-password");
+    if (response.status === 403 && code === "PASSWORD_CHANGE_REQUIRED") window.dispatchEvent(new Event("hcm-password-required"));
     throw new ApiError(response.status, code, message);
   }
 
@@ -81,4 +81,13 @@ export const api = {
   put: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "PUT", body }),
   patch: <T>(path: string, body?: unknown) => apiRequest<T>(path, { method: "PATCH", body }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: "DELETE" }),
+  download: async (path: string) => {
+    if (USE_MOCKS) return new Blob(["HCM Lite sample payslip"], { type: "application/pdf" });
+    const response = await fetch(`${API_URL}${path}`, { headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {} });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({ detail: { code: "HTTP_ERROR", message: response.statusText } }));
+      throw new ApiError(response.status, payload?.detail?.code ?? "HTTP_ERROR", payload?.detail?.message ?? response.statusText);
+    }
+    return response.blob();
+  },
 };

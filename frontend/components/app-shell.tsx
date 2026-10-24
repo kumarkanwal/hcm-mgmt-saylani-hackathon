@@ -4,13 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
-  Bell,
-  Bot,
   Building2,
   CalendarCheck,
   ChevronDown,
   ClipboardCheck,
-  FileClock,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -25,8 +22,9 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { toast } from "sonner";
+import { AiChatPanel } from "@/components/ai-chat-panel";
 import { Brand } from "@/components/brand";
+import { NotificationsDropdown } from "@/components/notifications-dropdown";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useAuth } from "@/lib/auth";
@@ -40,32 +38,33 @@ const menus: Record<Role, NavigationItem[]> = {
   admin: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Employees", href: "/employees", icon: Users },
-    { label: "Attendance", icon: CalendarCheck },
-    { label: "Leaves", icon: FileText },
-    { label: "Payroll", icon: WalletCards },
-    { label: "Announcements", icon: Megaphone },
-    { label: "Company settings", icon: Settings },
-    { label: "Organization", icon: Building2 },
-    { label: "Users", icon: Users },
-    { label: "Audit log", icon: ShieldCheck },
+    { label: "Attendance", href: "/attendance", icon: CalendarCheck },
+    { label: "Corrections", href: "/attendance/corrections", icon: ClipboardCheck },
+    { label: "Leaves", href: "/leaves", icon: FileText },
+    { label: "Payroll", href: "/payroll", icon: WalletCards },
+    { label: "Announcements", href: "/announcements", icon: Megaphone },
+    { label: "Company settings", href: "/settings/company", icon: Settings },
+    { label: "Organization", href: "/settings/organization", icon: Building2 },
+    { label: "Users", href: "/users", icon: Users },
+    { label: "Audit log", href: "/audit", icon: ShieldCheck },
   ],
   hr: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "Employees", href: "/employees", icon: Users },
-    { label: "Attendance", icon: CalendarCheck },
-    { label: "Corrections", icon: ClipboardCheck },
-    { label: "Leaves", icon: FileText },
-    { label: "Payroll", icon: WalletCards },
-    { label: "Announcements", icon: Megaphone },
-    { label: "Profile", icon: UserCircle },
+    { label: "Attendance", href: "/attendance", icon: CalendarCheck },
+    { label: "Corrections", href: "/attendance/corrections", icon: ClipboardCheck },
+    { label: "Leaves", href: "/leaves", icon: FileText },
+    { label: "Payroll", href: "/payroll", icon: WalletCards },
+    { label: "Announcements", href: "/announcements", icon: Megaphone },
+    { label: "Profile", href: "/profile", icon: UserCircle },
   ],
   employee: [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "My attendance", icon: CalendarCheck },
-    { label: "Leaves", icon: FileText },
-    { label: "Payslips", icon: WalletCards },
-    { label: "Announcements", icon: Megaphone },
-    { label: "Profile", icon: UserCircle },
+    { label: "My attendance", href: "/attendance", icon: CalendarCheck },
+    { label: "Leaves", href: "/leaves", icon: FileText },
+    { label: "Payslips", href: "/payslips", icon: WalletCards },
+    { label: "Announcements", href: "/announcements", icon: Megaphone },
+    { label: "Profile", href: "/profile", icon: UserCircle },
   ],
 };
 
@@ -114,12 +113,13 @@ function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }
   );
 }
 
-const routeTitles: Record<string, string> = { "/dashboard": "Dashboard", "/employees": "Employees", "/employees/new": "Register employee", "/employees/import": "Import employees" };
+const routeTitles: Record<string, string> = { "/dashboard": "Dashboard", "/employees": "Employees", "/employees/new": "Register employee", "/employees/import": "Import employees", "/attendance": "Attendance", "/attendance/corrections": "Corrections", "/leaves": "Leaves", "/payroll": "Payroll", "/payslips": "Payslips", "/announcements": "Announcements", "/profile": "Profile", "/settings/company": "Company settings", "/settings/organization": "Organization", "/users": "Users", "/audit": "Audit log" };
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { role = "hr", user, switchRole, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false);
   const name = displayName(role ?? "hr", user?.email);
   return (
     <div className="min-h-screen bg-page">
@@ -133,7 +133,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <option value="admin">Admin</option><option value="hr">HR</option><option value="employee">Employee</option>
             </Select>
           )}
-          <button className="relative rounded-full p-2 text-slate-600 hover:bg-slate-100" aria-label="Notifications"><Bell className="size-5" /><span className="absolute right-2 top-1.5 size-2 rounded-full bg-red-500 ring-2 ring-white" /></button>
+          <NotificationsDropdown />
           <details className="relative">
             <summary className="flex cursor-pointer list-none items-center gap-2 rounded-full py-1 pl-1 pr-2 hover:bg-slate-50">
               <span className="flex size-9 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-600">{initials(name)}</span>
@@ -154,10 +154,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </main>
       <button
         className="fixed bottom-5 right-5 z-40 flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-sm font-medium text-white shadow-lg transition hover:bg-[#087d74]"
-        onClick={() => toast.info("The assistant will be connected in a later phase.")}
+        onClick={() => setAssistantOpen(true)}
       >
-        <MessageCircle className="size-4" /><span className="hidden sm:inline">Ask assistant</span><Bot className="size-4 sm:hidden" />
+        <MessageCircle className="size-4" /><span className="hidden sm:inline">Ask assistant</span>
       </button>
+      <AiChatPanel open={assistantOpen} onOpenChange={setAssistantOpen} role={role ?? "hr"} />
     </div>
   );
 }

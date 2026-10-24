@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api, getToken, setToken, USE_MOCKS } from "@/lib/api";
 import { mockUserForRole } from "@/lib/mocks";
 import type { LoginResponse, Role, User } from "@/lib/types";
@@ -18,6 +19,7 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<User | null>(USE_MOCKS ? mockUserForRole("hr") : null);
   const [isLoading, setIsLoading] = useState(!USE_MOCKS);
 
@@ -35,11 +37,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    void refreshUser();
+    const loadUser = window.setTimeout(() => { void refreshUser(); }, 0);
     const clear = () => setUser(null);
+    const requirePassword = () => router.replace("/change-password");
     window.addEventListener("hcm-auth-cleared", clear);
-    return () => window.removeEventListener("hcm-auth-cleared", clear);
-  }, [refreshUser]);
+    window.addEventListener("hcm-password-required", requirePassword);
+    return () => { window.clearTimeout(loadUser); window.removeEventListener("hcm-auth-cleared", clear); window.removeEventListener("hcm-password-required", requirePassword); };
+  }, [refreshUser, router]);
 
   const value = useMemo<AuthContextValue>(() => ({
     user,
@@ -51,14 +55,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(response.user);
       return response.user;
     },
-    logout: () => { setToken(null); setUser(null); window.location.assign("/login"); },
+    logout: () => { setToken(null); setUser(null); router.push("/login"); },
     refreshUser,
     switchRole: (role) => {
       if (!USE_MOCKS) return;
       setToken(`mock-token-${role}`);
       setUser(mockUserForRole(role));
     },
-  }), [isLoading, refreshUser, user]);
+  }), [isLoading, refreshUser, router, user]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

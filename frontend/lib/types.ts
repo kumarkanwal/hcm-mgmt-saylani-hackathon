@@ -14,6 +14,9 @@ export type User = {
     employee_code: string;
     phone?: string;
     address?: string;
+    department?: string;
+    designation?: string;
+    join_date?: string;
   } | null;
 };
 
