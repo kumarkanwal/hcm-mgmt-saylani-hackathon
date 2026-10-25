@@ -18,6 +18,7 @@ from app.routers import (
     attendance,
     audit,
     auth,
+    communication,
     dashboard,
     employees,
     leaves,
@@ -115,6 +116,7 @@ app.include_router(auth.router)
 app.include_router(organization.router)
 app.include_router(users.router)
 app.include_router(audit.router)
+app.include_router(communication.router)
 app.include_router(dashboard.router)
 app.include_router(employees.router)
 app.include_router(attendance.router)

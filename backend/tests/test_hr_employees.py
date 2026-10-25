@@ -79,6 +79,14 @@ def test_employee_registration_listing_360_salary_and_scope(
         ).status_code
         == 422
     )
+    assert (
+        client.patch(
+            "/api/employees/me",
+            headers=context["employee_headers"],
+            json={"phone": "   "},
+        ).status_code
+        == 422
+    )
 
     revised = client.put(
         f"/api/employees/{employee_id}/salary",
@@ -131,6 +139,13 @@ def test_employee_registration_validation_atomicity_and_exit_deactivation(
         assert session.scalar(select(func.count(SalaryStructure.id))) == 1
 
     employee_id = context["employee"]["id"]
+    invalid_exit = client.patch(
+        f"/api/employees/{employee_id}",
+        headers=context["hr_headers"],
+        json={"status": "exited", "exit_date": "2025-12-31"},
+    )
+    assert invalid_exit.status_code == 422
+    assert invalid_exit.json()["detail"]["code"] == "INVALID_EXIT_DATE"
     exited = client.patch(
         f"/api/employees/{employee_id}",
         headers=context["hr_headers"],

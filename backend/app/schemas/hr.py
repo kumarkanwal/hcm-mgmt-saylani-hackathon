@@ -62,6 +62,16 @@ class EmployeeSelfUpdate(StrictModel):
     phone: str | None = Field(default=None, min_length=1, max_length=40)
     address: str | None = Field(default=None, max_length=500)
 
+    @field_validator("phone")
+    @classmethod
+    def trim_phone(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Phone must not be blank")
+        return cleaned
+
     @model_validator(mode="before")
     @classmethod
     def require_field(cls, value: object) -> object:

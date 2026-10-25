@@ -206,7 +206,7 @@ def attendance_today(session: Session, *, user: User) -> dict[str, Any] | None:
     return _attendance_dict(record) if record else None
 
 
-def _derived_status(
+def derive_attendance_status(
     day: date,
     *,
     today: date,
@@ -271,7 +271,7 @@ def attendance_calendar(session: Session, *, user: User, month: str) -> dict[str
                 "date": current,
                 "check_in": record.check_in if record else None,
                 "check_out": record.check_out if record else None,
-                "status": _derived_status(
+                "status": derive_attendance_status(
                     current,
                     today=today,
                     record=record,
@@ -340,7 +340,7 @@ def attendance_board(
             "department_id": employee.department_id,
             "department": department,
             "date": day,
-            "status": _derived_status(
+            "status": derive_attendance_status(
                 day,
                 today=today,
                 record=records.get(employee.id),
@@ -449,7 +449,7 @@ def _calendar_for_employee_range(
     return [
         {
             "date": day,
-            "status": _derived_status(
+            "status": derive_attendance_status(
                 day,
                 today=today,
                 record=records.get(day),

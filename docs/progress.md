@@ -54,3 +54,13 @@
 - Added `python-multipart` and `reportlab`; the existing database schema was sufficient, so Alembic remains at `a49dab4c246b` with no new migration.
 - Added 24 Phase 2 test cases, including a controlled-time, isolated-PostgreSQL workflow from first-run setup through attendance, correction, leave, payroll recalculation/finalization, PDF, both dashboards, audit, notifications, and cross-role denials. Full verification: 61 pytest cases passed with zero failures (one upstream Starlette/httpx deprecation warning); Ruff lint/format, Python compilation, OpenAPI generation, Alembic drift detection, and both Compose configurations passed.
 - Remaining Phase 3 work includes Employee dashboard and notification/announcement APIs plus the separate AI teammate's `/ai/*` implementation; frontend and deployment work remain outside this backend phase.
+
+## Phase 3 — Employee backend, integration, and production readiness (2026-10-25)
+
+- Implemented `GET /api/dashboard/me` with company-timezone status, live today duration, completed weekly hours, configured workdays, current-month late count, leave balances, and the latest finalized payslip. Every query is scoped through the authenticated employee link.
+- Implemented paginated announcements and private notifications: `GET/POST /api/announcements`, `GET /api/notifications`, and `PATCH /api/notifications/{id}/read`. Admin/HR can publish; all active roles can read; notification reads are owner-only and idempotent.
+- Announcement publication now creates active-user notifications and an audit row atomically using set-based fan-out. Added validation for self-service phone updates and employee exit dates, and removed repeated settings/holiday queries from leave-balance calculation.
+- Extended the complete setup-to-payroll integration flow through announcement publication, employee notifications, read state, and employee dashboard. Added rollback, pagination, ownership, authorization, timezone-boundary, empty-state, finalized-payslip, OpenAPI-inventory, and security-scheme tests.
+- Restored the production Nginx reverse-proxy configuration, added a backend container health check, and gated frontend/Nginx startup on backend health. Compose interpolation and Nginx syntax validate successfully.
+- Final regression result: 69 pytest cases passed with zero failures (one upstream Starlette/httpx deprecation warning). The API exposes 49 paths and Alembic remains at `a49dab4c246b`; no schema migration was required.
+- The separate AI teammate may consume the permission-aware functions in `app/services/reporting_service.py`; no AI router or AI-owned implementation was added or overwritten.

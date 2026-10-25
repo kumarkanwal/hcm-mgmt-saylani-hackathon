@@ -46,27 +46,40 @@ def get_leave_balance(
     session: Session, *, employee_id: int, year: int | None = None
 ) -> list[dict[str, Any]]:
     selected_year = year or local_date().year
+    year_start = date(selected_year, 1, 1)
+    year_end = date(selected_year, 12, 31)
     leave_types = session.scalars(select(LeaveType).order_by(LeaveType.id)).all()
     requests = session.scalars(
         select(LeaveRequest).where(
             LeaveRequest.employee_id == employee_id,
             LeaveRequest.status.in_(("pending", "approved")),
-            LeaveRequest.end_date >= date(selected_year, 1, 1),
-            LeaveRequest.start_date <= date(selected_year, 12, 31),
+            LeaveRequest.end_date >= year_start,
+            LeaveRequest.start_date <= year_end,
         )
     ).all()
+    settings = get_company_settings(session)
+    year_work_days = working_dates(
+        year_start,
+        year_end,
+        settings.weekend_days,
+        holiday_dates(session, year_start, year_end),
+    )
+
+    def request_days(request: LeaveRequest) -> Decimal:
+        return Decimal(
+            sum(
+                1
+                for day in year_work_days
+                if request.start_date <= day <= request.end_date
+            )
+        )
+
     result = []
     for leave_type in leave_types:
         relevant = [item for item in requests if item.leave_type_id == leave_type.id]
-        used = sum(
-            Decimal(_days_in_year(session, item, selected_year))
-            for item in relevant
-            if item.status == "approved"
-        )
+        used = sum(request_days(item) for item in relevant if item.status == "approved")
         pending = sum(
-            Decimal(_days_in_year(session, item, selected_year))
-            for item in relevant
-            if item.status == "pending"
+            request_days(item) for item in relevant if item.status == "pending"
         )
         quota = (
             Decimal(leave_type.yearly_quota)

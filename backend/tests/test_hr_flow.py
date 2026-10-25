@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from sqlalchemy import func, select
 
 from app.models import LeaveType, Notification
-from app.services import attendance_service
+from app.services import attendance_service, employee_dashboard_service
 
 
 def test_complete_hr_employee_payroll_workflow(
@@ -138,6 +138,45 @@ def test_complete_hr_employee_payroll_workflow(
     pdf = client.get(f"/api/payslips/{payslip_id}/pdf", headers=employee_headers)
     assert pdf.status_code == 200 and pdf.content.startswith(b"%PDF")
 
+    announcement = client.post(
+        "/api/announcements",
+        headers=hr_headers,
+        json={"title": "Team update", "body": "The monthly meeting is tomorrow."},
+    )
+    assert announcement.status_code == 201
+    announcement_list = client.get("/api/announcements", headers=employee_headers)
+    assert announcement_list.status_code == 200
+    assert announcement_list.json()["items"][0]["title"] == "Team update"
+    notifications = client.get("/api/notifications", headers=employee_headers)
+    assert notifications.status_code == 200
+    assert notifications.json()["total"] == 4
+    assert notifications.json()["unread_count"] == 4
+    announcement_notification = next(
+        item for item in notifications.json()["items"] if item["type"] == "announcement"
+    )
+    marked = client.patch(
+        f"/api/notifications/{announcement_notification['id']}/read",
+        headers=employee_headers,
+    )
+    assert marked.status_code == 200 and marked.json()["is_read"] is True
+    assert (
+        client.get("/api/notifications", headers=employee_headers).json()[
+            "unread_count"
+        ]
+        == 3
+    )
+
+    monkeypatch.setattr(
+        employee_dashboard_service,
+        "utc_now",
+        lambda: datetime(2026, 10, 20, 13, 0, tzinfo=UTC),
+    )
+    employee_dashboard = client.get("/api/dashboard/me", headers=employee_headers)
+    assert employee_dashboard.status_code == 200
+    assert employee_dashboard.json()["today_status"]["status"] == "present"
+    assert employee_dashboard.json()["hours_this_week"] == 16.0
+    assert employee_dashboard.json()["last_payslip"]["month"] == "2026-10"
+
     dashboard = client.get(
         "/api/dashboard/hr?from=2026-10-20&to=2026-10-23", headers=hr_headers
     )
@@ -159,10 +198,12 @@ def test_complete_hr_employee_payroll_workflow(
     assert {
         "employees",
         "attendance_corrections",
+        "announcements",
         "leave_requests",
+        "notifications",
         "payroll_runs",
     } <= entities
     with db_factory() as session:
-        assert session.scalar(select(func.count(Notification.id))) == 3
+        assert session.scalar(select(func.count(Notification.id))) == 6
     assert client.get("/api/audit-logs", headers=employee_headers).status_code == 403
     assert client.get("/api/employees", headers=employee_headers).status_code == 403

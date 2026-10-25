@@ -26,3 +26,12 @@
 - Cross-year leave requests reserve and consume quota independently in each calendar year. HR leave reporting clips approved requests to working days within the requested range; for a multi-year utilization range, the displayed quota is the yearly quota multiplied by the number of included calendar years. Unlimited leave has null quota and utilization.
 - CSV imports are partial by contract: validation is shared with normal employee registration, and every valid row is committed as its own complete employee/salary/login/audit transaction. A failure cannot leave a partial employee, while other valid rows may still succeed and return their one-time temporary passwords.
 - Phase 2 response contracts are defined by the Pydantic models in `backend/app/schemas/hr.py`. No shared API or model document was changed; the HR dashboard's flexible breakdown objects include explicit `quota` and `utilization_percent` values for leave usage.
+
+## 2026-10-25 — Phase 3 employee experience and production integration
+
+- The existing notification table stores only `message` and `type`. The API preserves those fields and derives stable `title`, `body`, and `link` presentation metadata from the constrained notification type, avoiding an undocumented schema change while satisfying the employee UI contract.
+- Employee dashboard dates use the configured company timezone. Weekly totals contain completed shifts only so an open or missing checkout cannot inflate payroll-adjacent totals; today's `work_duration` may show the live elapsed duration of an open shift. The displayed weekly target is 40 hours and the daily series follows configured working weekdays.
+- Dashboard attendance status calls the same derivation function used by attendance history, so leave, holiday, weekend, absence, and missing-checkout rules cannot drift between endpoints.
+- Announcement title/body limits are 200/500 characters, matching the existing database and frontend expectations. Author display names use the linked employee name when available and fall back to the account email for system-style Admin accounts.
+- Announcement creation, active-user notification fan-out, and audit insertion are one transaction. Notification fan-out is a set-based insert rather than one query per user. Reading notifications is always scoped to the authenticated account; cross-account IDs return not found.
+- The existing 17-table schema supports all Phase 3 functionality, so the Alembic head remains `a49dab4c246b`. No `API.md`, `MODELS.md`, frontend, or AI-owned file was changed.

@@ -328,6 +328,12 @@ def update_employee(
             setattr(employee, field, value)
         if employee.status == "exited" and employee.exit_date is None:
             employee.exit_date = local_date()
+        if employee.exit_date is not None and employee.exit_date < employee.join_date:
+            raise ApiError(
+                422,
+                "INVALID_EXIT_DATE",
+                "Exit date must not be before the employee's join date",
+            )
         if employee.exit_date is not None:
             employee.status = "exited"
             linked_users = session.scalars(
